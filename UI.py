@@ -1,3 +1,5 @@
+from KB import Board
+
 def parse_puzzle(puzzle_str):
     """
     Convert a string of 81 digits (0 = empty) into a 9x9 grid.
@@ -32,9 +34,13 @@ def main():
     # Convert to 2D grid
     grid = parse_puzzle(puzzle_str)
 
+
+    board = Board(grid)
+
     # Display the puzzle
     print("Sudoku Puzzle:")
-    display_grid(grid)
+    #display_grid(grid)
+    board.print_board()
 
 if __name__ == "__main__":
     main()
