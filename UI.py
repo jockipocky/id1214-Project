@@ -1,4 +1,4 @@
-from KB import Board
+from Board import Board
 
 def parse_puzzle(puzzle_str):
     """
@@ -15,16 +15,16 @@ def parse_puzzle(puzzle_str):
     return grid
 
 def display_grid(grid):
-    """Prints a Sudoku grid nicely."""
+    """Prints a Sudoku grid """
     for r, row in enumerate(grid): # r assigned index and row assinged values at index
         row_str = ""
         for c, num in enumerate(row):
             char = str(num) if num != 0 else "." 
             row_str += char + " "
-            if (c + 1) % 3 == 0 and c < 8: # every third column add vertical seperator for visual 3x3 boxes
+            if (c + 1) % 3 == 0 and c < 8: # Every third column add vertical seperator for visual 3x3 boxes
                 row_str += "| "
         print(row_str)
-        if (r + 1) % 3 == 0 and r < 8: # every third row horizontal sperator for visual 3x3 boxes
+        if (r + 1) % 3 == 0 and r < 8: # Every third row horizontal sperator for visual 3x3 boxes
             print("- " * 11)
 
 def main():
@@ -34,13 +34,12 @@ def main():
     # Convert to 2D grid
     grid = parse_puzzle(puzzle_str)
 
-
-    board = Board(grid)
+    board = Board(grid) # Create board object based on puzzle_str
 
     # Display the puzzle
     print("Sudoku Puzzle:")
-    #display_grid(grid)
-    board.print_board()
+    display_grid(grid)
+    #board.print_board()
 
 if __name__ == "__main__":
     main()
