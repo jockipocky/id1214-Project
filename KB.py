@@ -1,63 +1,32 @@
+from Board import Board
 from Cell import Cell
 
-class Board:
-    def __init__(self, initial_grid):
-        """
-        initial_grid: 9x9 list of ints from UI (0 = empty, 1–9 = given value)
-        """
-        self.size = len(initial_grid)
-        self.cells = []          # 2D list of Cell objects
-        self.givens = set()      # coordinates (row, col) that were given from the start
+class KnowledgeBase:
+    def __init__(self, board):
+        self.board = board
+        self.rules = []  # list of rule functions
+        self.initialize_candidates()
 
-        for r in range(self.size):
-            row = []
-            for c in range(self.size):
-                value = initial_grid[r][c]
-                if value == 0:
-                    cell = Cell(r, c, None)   # None = empty
+    def add_rule(self, rule_func):
+        self.rules.append(rule_func)
+
+    def initialize_candidates(self):
+        """
+        For every cell:
+        - if it's empty, compute candidates and store them in cell.candidates
+        - if it's filled, candidates is an empty set
+        """
+        for r in range(self.board.size):
+            for c in range(self.board.size):
+                cell = self.board.cells[r][c]
+                if cell.value in (None, 0):
+                    cell.candidates = set(get_candidates(self.board, r, c))
                 else:
-                    cell = Cell(r, c, value)
-                    self.givens.add((r, c))
-                row.append(cell)
-            self.cells.append(row)
-
-    def get_value(self, row, col):
-        return self.cells[row][col].value
-
-    def set_value(self, row, col, value):
-        self.cells[row][col].value = value
-
-    def is_given(self, row, col):
-        """Return True if this cell was part of the original puzzle."""
-        return (row, col) in self.givens
-
-    def to_grid(self):
-        """
-        Convert back to a 9x9 list of ints (0 for empty) so the UI can display it.
-        """
-        grid = []
-        for r in range(self.size):
-            row = []
-            for c in range(self.size):
-                v = self.cells[r][c].value
-                row.append(0 if v is None else v)
-            grid.append(row)
-        return grid
-    def print_board(self):
-        for r in range(self.size):
-            row_values = []
-            for c in range(self.size):
-                v = self.cells[r][c].value
-                row_values.append("." if v is None else str(v))
-                if c % 3 == 2 and c != self.size - 1:
-                    row_values.append("|")
-            print(" ".join(row_values))
-            if r % 3 == 2 and r != self.size - 1:
-                print("-" * 21)
-
+                    cell.candidates = set()
 
 DIGITS = set(range(1, 10))  # {1,2,3,4,5,6,7,8,9}
 
+# Constraint
 def get_row_values(board, row):
     """Return a set of digits already used in a given row."""
     values = set()
@@ -67,7 +36,7 @@ def get_row_values(board, row):
             values.add(v)
     return values
 
-
+# Constraint
 def get_col_values(board, col):
     """Return a set of digits already used in a given column."""
     values = set()
@@ -77,7 +46,7 @@ def get_col_values(board, col):
             values.add(v)
     return values
 
-
+# Constraint
 def get_box_values(board, row, col):
     """Return a set of digits already used in the 3x3 box of (row, col)."""
     values = set()
@@ -92,6 +61,8 @@ def get_box_values(board, row, col):
             if v is not None and v != 0:
                 values.add(v)
     return values
+
+# Constraint application
 def get_candidates(board, row, col):
     """
     Return a list of digits that can legally go in (row, col)
@@ -113,22 +84,172 @@ def get_candidates(board, row, col):
             candidates.append(d)
 
     return candidates
+
+# Rule
 def apply_single_candidate_rule(board):
     """
-    Go through the whole board.
-    If a cell has exactly one candidate, fill it with that value.
-    Return True if at least one cell was changed, otherwise False.
+    If a cell has exactly one candidate in its stored candidate set,
+    fill it and clear its candidates, then propagate constraints.
     """
     changed = False
 
     for r in range(board.size):
         for c in range(board.size):
-            if board.get_value(r, c) not in (None, 0):
-                continue  # already filled
+            cell = board.cells[r][c]
 
-            candidates = get_candidates(board, r, c)
-            if len(candidates) == 1:
-                board.set_value(r, c, candidates[0])
+            # Skip filled cells
+            if cell.value not in (None, 0):
+                continue
+
+            # Make sure candidates available
+            if not cell.candidates:
+                cell.candidates = set(get_candidates(board, r, c))
+
+            # ------ Single candidate detected ------
+            if len(cell.candidates) == 1:
+                value = next(iter(cell.candidates))
+
+                # Set cell value
+                cell.value = value
+                cell.candidates.clear()
                 changed = True
 
+                # NEW: Propagate value to remove it from other cells' candidates
+                propagate_value(board, r, c, value)
+
     return changed
+
+
+def apply_hidden_single_rule(board):
+    """ 
+    Hidden Single: if a digit can only go in one cell in a group (row, col, box), fill it.
+    """
+    changed = False
+
+    def check_group(cells):
+        """
+        cells: list of (row, col) positions in the group
+        """
+        nonlocal changed
+        for d in DIGITS:
+            positions = []
+            for r, c in cells:
+                if board.get_value(r, c) in (None, 0):
+                    if d in get_candidates(board, r, c):
+                        positions.append((r, c))
+            if len(positions) == 1:
+                row, col = positions[0]
+                cell = board.cells[row][col]
+                cell.value = d
+                cell.candidates.clear()
+                propagate_value(board, row, col, d)
+                changed = True
+
+    size = board.size
+
+    # --- Rows ---
+    for r in range(size):
+        cells = [(r, c) for c in range(size)]
+        check_group(cells)
+
+    # --- Columns ---
+    for c in range(size):
+        cells = [(r, c) for r in range(size)]
+        check_group(cells)
+
+    # --- Boxes ---
+    for box_row in range(0, size, 3):
+        for box_col in range(0, size, 3):
+            cells = [
+                (r, c)
+                for r in range(box_row, box_row + 3)
+                for c in range(box_col, box_col + 3)
+            ]
+            check_group(cells)
+
+    return changed
+
+def is_row_valid(board, row):
+    values = [
+        board.get_value(row, c)
+        for c in range(board.size)
+        if board.get_value(row, c) not in (None, 0)
+    ]
+    return len(values) == len(set(values))
+
+def is_col_valid(board, col):
+    values = [
+        board.get_value(r, col)
+        for r in range(board.size)
+        if board.get_value(r, col) not in (None, 0)
+    ]
+    return len(values) == len(set(values))
+
+def is_box_valid(board, row, col):
+    values = []
+    box_row_start = (row // 3) * 3
+    box_col_start = (col // 3) * 3
+    for r in range(box_row_start, box_row_start + 3):
+        for c in range(box_col_start, box_col_start + 3):
+            v = board.get_value(r, c)
+            if v not in (None, 0):
+                values.append(v)
+    return len(values) == len(set(values))
+
+def is_board_valid(board):
+    size = board.size
+    for r in range(size):
+        if not is_row_valid(board, r):
+            return False
+    for c in range(size):
+        if not is_col_valid(board, c):
+            return False
+    for r in range(0, size, 3):
+        for c in range(0, size, 3):
+            if not is_box_valid(board, r, c):
+                return False
+    return True
+
+def is_solved(board):
+    for r in range(board.size):
+        for c in range(board.size):
+            if board.get_value(r, c) in (None, 0):
+                return False
+            
+    return is_board_valid(board)
+
+def propagate_value(board, row, col, value):
+    """
+    When (row, col) is set to `value`, remove that value
+    from the candidate sets of all other cells in the same
+    row, column, and 3×3 box.
+    """
+    size = board.size
+
+    # --- Remove from row ---
+    for c in range(size):
+        if c != col:
+            cell = board.cells[row][c]
+            if value in cell.candidates:
+                cell.candidates.discard(value)
+
+    # --- Remove from column ---
+    for r in range(size):
+        if r != row:
+            cell = board.cells[r][col]
+            if value in cell.candidates:
+                cell.candidates.discard(value)
+
+    # --- Remove from box ---
+    box_row_start = (row // 3) * 3
+    box_col_start = (col // 3) * 3
+
+    for r in range(box_row_start, box_row_start + 3):
+        for c in range(box_col_start, box_col_start + 3):
+            if r == row and c == col:
+                continue
+            cell = board.cells[r][c]
+            if value in cell.candidates:
+                cell.candidates.discard(value)
+
+

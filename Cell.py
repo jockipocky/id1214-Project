@@ -5,3 +5,7 @@ class Cell:
         self.row = row
         self.column = column
         self.value = value
+        self.candidates = set()
+        
+    def __repr__(self):
+            return f"Cell(r={self.row}, c={self.column}, v={self.value}, cand={self.candidates})"
