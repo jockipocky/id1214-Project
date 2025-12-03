@@ -1,4 +1,6 @@
 from Board import Board
+from KB import KnowledgeBase
+from IE import InferenceEngine
 
 def parse_puzzle(puzzle_str):
     """
@@ -36,10 +38,20 @@ def main():
 
     board = Board(grid) # Create board object based on puzzle_str
 
+    kb = KnowledgeBase(board)
+    ie = InferenceEngine(board, kb)
+
     # Display the puzzle
-    print("Sudoku Puzzle:")
+    print("Sudoku Puzzle to be solved:")
     display_grid(grid)
-    #board.print_board()
+
+    # Display solved puzzle
+    logs = ie.run()  
+    print("Solved Sudoku Puzzle:")
+    display_grid(board.to_grid())
+  
+
+
 
 if __name__ == "__main__":
     main()

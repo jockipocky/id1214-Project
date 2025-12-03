@@ -1,5 +1,3 @@
-
-
 class KnowledgeBase:
     def __init__(self, board):
         self.board = board
@@ -70,7 +68,7 @@ def get_candidates(board, row, col):
     return candidates
 
 # Rule
-def apply_single_candidate_rule(board):
+def apply_single_candidate_rule(board, logs=None):
     """
     Go through the whole board.
     If a cell has exactly one candidate, fill it with that value.
@@ -88,9 +86,12 @@ def apply_single_candidate_rule(board):
                 board.set_value(r, c, candidates[0])
                 changed = True
 
+            if logs is not None:
+                logs.append(f"Single Candidate filled {candidates[0]} at ({r}, {c})")
+
     return changed
 
-def apply_hidden_single_rule(board):
+def apply_hidden_single_rule(board, logs=None):
     """ 
     Hidden Single: if a digit can only go in one cell in a group (row, col, box), fill it.
     """
