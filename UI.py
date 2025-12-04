@@ -1,5 +1,5 @@
 from Board import Board
-from KB import KnowledgeBase
+from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule, is_solved
 from IE import InferenceEngine
 
 def parse_puzzle(puzzle_str):
@@ -39,6 +39,8 @@ def main():
     board = Board(grid) # Create board object based on puzzle_str
 
     kb = KnowledgeBase(board)
+    kb.add_rule(apply_single_candidate_rule)
+    kb.add_rule(apply_hidden_single_rule)
     ie = InferenceEngine(board, kb)
 
     # Display the puzzle
@@ -50,6 +52,7 @@ def main():
     print("Solved Sudoku Puzzle:")
     display_grid(board.to_grid())
   
+    print("\nSolved?", is_solved(board))
 
 
 
