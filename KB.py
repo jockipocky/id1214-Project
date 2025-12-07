@@ -252,4 +252,47 @@ def propagate_value(board, row, col, value):
             if value in cell.candidates:
                 cell.candidates.discard(value)
 
+def find_empty_cell(board):
+    """Return (row, col) of the first empty cell, or None if full."""
+    for r in range(board.size):
+        for c in range(board.size):
+            if board.get_value(r, c) in (None, 0):
+                return (r, c)
+    return None
 
+def solve_with_backtracking(board):
+    """
+    Classic recursive backtracking Sudoku solver.
+    Uses get_candidates + is_board_valid.
+    Returns True if solved, False if no solution.
+    """
+    # Find an empty cell
+    empty = find_empty_cell(board)
+    if empty is None:
+        # No empty cells left: check if the board is valid
+        return is_board_valid(board)
+
+    row, col = empty
+
+    # Get legal candidates for this cell
+    candidates = get_candidates(board, row, col)
+    if not candidates:
+        return False  # dead end
+
+    for value in candidates:
+        # Try this value
+        board.set_value(row, col, value)
+
+        # Optional: you can update candidates here if you want,
+        # but it's not required for correctness of backtracking.
+
+        # Check if board is still consistent
+        if is_board_valid(board):
+            if solve_with_backtracking(board):
+                return True
+
+        # Undo (backtrack)
+        board.set_value(row, col, None)
+
+    # No candidate worked -> unsolvable from this path
+    return False

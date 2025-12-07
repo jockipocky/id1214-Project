@@ -1,5 +1,5 @@
 from Board import Board
-from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule, is_solved
+from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule, is_solved, solve_with_backtracking
 from IE import InferenceEngine
 
 def parse_puzzle(puzzle_str):
@@ -31,7 +31,7 @@ def display_grid(grid):
 
 def main():
     # Example puzzle string (0 = empty)
-    puzzle_str = "530070000600195000098000060800060003400803001700020006060000280000419005000080079"
+    puzzle_str = "980600031007000000600540000000008374000060000000000902032007400040300010000000000" #"530070000600195000098000060800060003400803001700020006060000280000419005000080079"
 
     # Convert to 2D grid
     grid = parse_puzzle(puzzle_str)
@@ -54,7 +54,18 @@ def main():
   
     print("\nSolved?", is_solved(board))
 
+    print("\nAfter rule-based inference:")
+    board.print_board()
+    print("\nSolved by rules only?", is_solved(board))
 
+    if not is_solved(board):
+        print("\nRules got stuck. Trying backtracking...")
+        solved = solve_with_backtracking(board)
+        print("Backtracking solved?", solved)
+
+        print("\nFinal board:")
+        board.print_board()
+        print("\nSolved?", is_solved(board))
 
 if __name__ == "__main__":
     main()
