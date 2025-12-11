@@ -1,5 +1,6 @@
 from Board import Board
 from Cell import Cell
+import copy
 
 class KnowledgeBase:
     def __init__(self, board):
@@ -24,9 +25,13 @@ class KnowledgeBase:
                 else:
                     cell.candidates = set()
 
+
 DIGITS = set(range(1, 10))  # {1,2,3,4,5,6,7,8,9}
 
-# Constraint
+# ----------------------------
+# Constraint helpers
+# ----------------------------
+
 def get_row_values(board, row):
     """Return a set of digits already used in a given row."""
     values = set()
@@ -36,7 +41,7 @@ def get_row_values(board, row):
             values.add(v)
     return values
 
-# Constraint
+
 def get_col_values(board, col):
     """Return a set of digits already used in a given column."""
     values = set()
@@ -46,7 +51,7 @@ def get_col_values(board, col):
             values.add(v)
     return values
 
-# Constraint
+
 def get_box_values(board, row, col):
     """Return a set of digits already used in the 3x3 box of (row, col)."""
     values = set()
@@ -62,7 +67,7 @@ def get_box_values(board, row, col):
                 values.add(v)
     return values
 
-# Constraint application
+
 def get_candidates(board, row, col):
     """
     Return a list of digits that can legally go in (row, col)
@@ -85,8 +90,11 @@ def get_candidates(board, row, col):
 
     return candidates
 
-# Rule
-def apply_single_candidate_rule(board):
+# ----------------------------
+# Rules
+# ----------------------------
+
+def apply_single_candidate_rule(board, logger=None):
     """
     If a cell has exactly one candidate in its stored candidate set,
     fill it and clear its candidates, then propagate constraints.
@@ -102,34 +110,38 @@ def apply_single_candidate_rule(board):
                 continue
 
             # Make sure candidates available
-            if not cell.candidates:
+            if not hasattr(cell, "candidates") or not cell.candidates:
                 cell.candidates = set(get_candidates(board, r, c))
 
-            # ------ Single candidate detected ------
             if len(cell.candidates) == 1:
                 value = next(iter(cell.candidates))
+                old_value = cell.value
+                old_candidates = set(cell.candidates)
 
-                # Set cell value
                 cell.value = value
                 cell.candidates.clear()
+                propagate_value(board, r, c, value)
                 changed = True
 
-                # NEW: Propagate value to remove it from other cells' candidates
-                propagate_value(board, r, c, value)
+                if logger is not None:
+                    logger.add_rule_change(
+                        rule_name="single_candidate",
+                        row=r,
+                        col=c,
+                        old_value=old_value,
+                        new_value=value,
+                        reason="Cell had exactly one candidate",
+                        extra={"candidates_before": list(old_candidates)},
+                    )
 
     return changed
 
 
-def apply_hidden_single_rule(board):
-    """ 
-    Hidden Single: if a digit can only go in one cell in a group (row, col, box), fill it.
-    """
+def apply_hidden_single_rule(board, logger=None):
+    """Hidden Single: if a digit can only go in one cell in a group, fill it."""
     changed = False
 
     def check_group(cells):
-        """
-        cells: list of (row, col) positions in the group
-        """
         nonlocal changed
         for d in DIGITS:
             positions = []
@@ -140,24 +152,36 @@ def apply_hidden_single_rule(board):
             if len(positions) == 1:
                 row, col = positions[0]
                 cell = board.cells[row][col]
+                old_value = cell.value
+
                 cell.value = d
-                cell.candidates.clear()
+                cell.candidates = set()  # no candidates left
                 propagate_value(board, row, col, d)
                 changed = True
 
+                if logger is not None:
+                    logger.add_rule_change(
+                        rule_name="hidden_single",
+                        row=row,
+                        col=col,
+                        old_value=old_value,
+                        new_value=d,
+                        reason="Digit can only go in one cell in this group",
+                    )
+
     size = board.size
 
-    # --- Rows ---
+    # Rows
     for r in range(size):
         cells = [(r, c) for c in range(size)]
         check_group(cells)
 
-    # --- Columns ---
+    # Columns
     for c in range(size):
         cells = [(r, c) for r in range(size)]
         check_group(cells)
 
-    # --- Boxes ---
+    # Boxes
     for box_row in range(0, size, 3):
         for box_col in range(0, size, 3):
             cells = [
@@ -169,6 +193,10 @@ def apply_hidden_single_rule(board):
 
     return changed
 
+# ----------------------------
+# Board validity helpers
+# ----------------------------
+
 def is_row_valid(board, row):
     values = [
         board.get_value(row, c)
@@ -177,6 +205,7 @@ def is_row_valid(board, row):
     ]
     return len(values) == len(set(values))
 
+
 def is_col_valid(board, col):
     values = [
         board.get_value(r, col)
@@ -184,6 +213,7 @@ def is_col_valid(board, col):
         if board.get_value(r, col) not in (None, 0)
     ]
     return len(values) == len(set(values))
+
 
 def is_box_valid(board, row, col):
     values = []
@@ -195,6 +225,7 @@ def is_box_valid(board, row, col):
             if v not in (None, 0):
                 values.append(v)
     return len(values) == len(set(values))
+
 
 def is_board_valid(board):
     size = board.size
@@ -210,13 +241,18 @@ def is_board_valid(board):
                 return False
     return True
 
+
 def is_solved(board):
     for r in range(board.size):
         for c in range(board.size):
             if board.get_value(r, c) in (None, 0):
                 return False
-            
+
     return is_board_valid(board)
+
+# ----------------------------
+# Candidate propagation
+# ----------------------------
 
 def propagate_value(board, row, col, value):
     """
@@ -230,14 +266,14 @@ def propagate_value(board, row, col, value):
     for c in range(size):
         if c != col:
             cell = board.cells[row][c]
-            if value in cell.candidates:
+            if hasattr(cell, "candidates") and value in cell.candidates:
                 cell.candidates.discard(value)
 
     # --- Remove from column ---
     for r in range(size):
         if r != row:
             cell = board.cells[r][col]
-            if value in cell.candidates:
+            if hasattr(cell, "candidates") and value in cell.candidates:
                 cell.candidates.discard(value)
 
     # --- Remove from box ---
@@ -249,8 +285,12 @@ def propagate_value(board, row, col, value):
             if r == row and c == col:
                 continue
             cell = board.cells[r][c]
-            if value in cell.candidates:
+            if hasattr(cell, "candidates") and value in cell.candidates:
                 cell.candidates.discard(value)
+
+# ----------------------------
+# Utility for search
+# ----------------------------
 
 def find_empty_cell(board):
     """Return (row, col) of the first empty cell, or None if full."""
@@ -260,39 +300,19 @@ def find_empty_cell(board):
                 return (r, c)
     return None
 
-def solve_with_backtracking(board):
+def apply_rules_until_stable(board, logger=None):
     """
-    Classic recursive backtracking Sudoku solver.
-    Uses get_candidates + is_board_valid.
-    Returns True if solved, False if no solution.
+    Apply all simple rules (single candidate, hidden single) repeatedly
+    until no more changes occur.
+    This is used both by the inference engine and by backtracking branches.
     """
-    # Find an empty cell
-    empty = find_empty_cell(board)
-    if empty is None:
-        # No empty cells left: check if the board is valid
-        return is_board_valid(board)
+    while True:
+        changed = False
+        # You can extend this list with more rules later:
+        for rule in (apply_single_candidate_rule, apply_hidden_single_rule):
+            if rule(board, logger=logger):
+                changed = True
+        if not changed:
+            break
 
-    row, col = empty
 
-    # Get legal candidates for this cell
-    candidates = get_candidates(board, row, col)
-    if not candidates:
-        return False  # dead end
-
-    for value in candidates:
-        # Try this value
-        board.set_value(row, col, value)
-
-        # Optional: you can update candidates here if you want,
-        # but it's not required for correctness of backtracking.
-
-        # Check if board is still consistent
-        if is_board_valid(board):
-            if solve_with_backtracking(board):
-                return True
-
-        # Undo (backtrack)
-        board.set_value(row, col, None)
-
-    # No candidate worked -> unsolvable from this path
-    return False
