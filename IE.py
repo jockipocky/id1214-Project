@@ -150,7 +150,7 @@ class InferenceEngine:
                     old_value=value,
                     new_value=old_value,
                     depth=depth,
-                    reason="Guess led to dead end – backtracking",
+                    reason="Guess led to dead end backtracking",
                 )
 
         return False
