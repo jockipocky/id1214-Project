@@ -44,10 +44,10 @@ class InferenceEngine:
 
             for rule in self.kb.rules:
                 result = rule(self.board, logger=self.logger)
-                if self.logger is not None:
+                """if self.logger is not None:
                     self.logger.add_message(
                         f"Rule {rule.__name__} changed board: {result}"
-                    )
+                    )"""
                 if result:
                     changed = True
 

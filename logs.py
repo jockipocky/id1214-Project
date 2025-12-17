@@ -91,6 +91,14 @@ class Logger:
 
         if t == "message":
             return f"[Info] {entry['message']}"
+        
+        if t == "elim":
+            rule = entry["rule"]
+            r, c = entry["row"], entry["col"]
+            removed = entry["removed"]
+            reason = entry.get("reason", "")
+            return f"[Elim] {rule}: removed {removed} from ({r},{c}). {reason}"
+
 
         return f"[Unknown] {entry}"
 
@@ -102,3 +110,13 @@ class Logger:
 
     def __iter__(self):
         return iter(self.entries)
+    
+    def add_elimination(self, rule_name, row, col, removed, reason=None):
+        self.entries.append({
+            "type": "elim",
+            "rule": rule_name,
+            "row": row,
+            "col": col,
+            "removed": sorted(list(removed)),
+            "reason": reason,
+        })

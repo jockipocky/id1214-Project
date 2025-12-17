@@ -316,3 +316,151 @@ def apply_rules_until_stable(board, logger=None):
             break
 
 
+from itertools import combinations
+
+def _ensure_candidates(board, r, c):
+    """Make sure cell.candidates exists and is up-to-date for an empty cell."""
+    cell = board.cells[r][c]
+    if cell.value not in (None, 0):
+        cell.candidates = set()
+        return
+    if not hasattr(cell, "candidates") or cell.candidates is None or len(cell.candidates) == 0:
+        cell.candidates = set(get_candidates(board, r, c))
+
+
+def _all_units(board):
+    """Yield all 27 Sudoku units: 9 rows, 9 cols, 9 boxes. Each unit is a list of (r,c)."""
+    size = board.size
+
+    # rows
+    for r in range(size):
+        yield [(r, c) for c in range(size)]
+
+    # cols
+    for c in range(size):
+        yield [(r, c) for r in range(size)]
+
+    # boxes
+    for br in range(0, size, 3):
+        for bc in range(0, size, 3):
+            yield [(r, c) for r in range(br, br + 3) for c in range(bc, bc + 3)]
+
+
+def apply_naked_pairs_rule(board, logger=None):
+    """
+    Naked Pairs:
+    If two cells in a unit have the exact same two candidates {a,b},
+    remove {a,b} from all other cells in that unit.
+    """
+    changed = False
+
+    for unit in _all_units(board):
+        # ensure candidates for empty cells
+        empties = []
+        for (r, c) in unit:
+            if board.get_value(r, c) in (None, 0):
+                _ensure_candidates(board, r, c)
+                cell = board.cells[r][c]
+                if len(cell.candidates) == 2:
+                    empties.append((r, c, frozenset(cell.candidates)))
+
+        # group by candidate-pair
+        pair_map = {}
+        for r, c, candset in empties:
+            pair_map.setdefault(candset, []).append((r, c))
+
+        # if a pair appears in exactly 2 cells -> eliminate from others
+        for pair_cands, cells_with_pair in pair_map.items():
+            if len(cells_with_pair) != 2:
+                continue
+
+            for (r, c) in unit:
+                if (r, c) in cells_with_pair:
+                    continue
+                if board.get_value(r, c) not in (None, 0):
+                    continue
+
+                _ensure_candidates(board, r, c)
+                cell = board.cells[r][c]
+
+                before = set(cell.candidates)
+                to_remove = set(pair_cands) & before
+                if to_remove:
+                    cell.candidates -= to_remove
+                    changed = True
+                    if logger is not None:
+                        logger.add_elimination(
+                            rule_name="naked_pairs",
+                            row=r,
+                            col=c,
+                            removed=to_remove,
+                            reason=f"because cells {cells_with_pair} form a naked pair {sorted(pair_cands)}"
+                        )
+
+
+
+    return changed
+
+
+def apply_naked_triples_rule(board, logger=None):
+    """
+    Naked Triples:
+    If three cells in a unit have candidates whose UNION is exactly 3 digits,
+    and each of those three cells' candidates are subsets of that union,
+    remove those 3 digits from all other cells in that unit.
+    """
+    changed = False
+
+    for unit in _all_units(board):
+        # collect empty cells with 2 or 3 candidates (typical for triples)
+        candidates_list = []
+        for (r, c) in unit:
+            if board.get_value(r, c) in (None, 0):
+                _ensure_candidates(board, r, c)
+                cell = board.cells[r][c]
+                if 2 <= len(cell.candidates) <= 3:
+                    candidates_list.append((r, c, frozenset(cell.candidates)))
+
+        # try all combinations of 3 cells
+        for triple in combinations(candidates_list, 3):
+            cells = [(triple[0][0], triple[0][1]),
+                     (triple[1][0], triple[1][1]),
+                     (triple[2][0], triple[2][1])]
+
+            union = set(triple[0][2]) | set(triple[1][2]) | set(triple[2][2])
+
+            # naked triple condition: union size exactly 3
+            if len(union) != 3:
+                continue
+
+            # each cell candidates must be subset of union
+            if not (set(triple[0][2]) <= union and set(triple[1][2]) <= union and set(triple[2][2]) <= union):
+                continue
+
+            # eliminate union digits from other cells in unit
+            for (r, c) in unit:
+                if (r, c) in cells:
+                    continue
+                if board.get_value(r, c) not in (None, 0):
+                    continue
+
+                _ensure_candidates(board, r, c)
+                cell = board.cells[r][c]
+
+                before = set(cell.candidates)
+                to_remove = union & before
+                if to_remove:
+                    cell.candidates -= to_remove
+                    changed = True
+                    if logger is not None:
+                        logger.add_elimination(
+                            rule_name="naked_triples",
+                            row=r,
+                            col=c,
+                            removed=to_remove,
+                            reason=f"because cells {cells} form a naked triple {sorted(union)}"
+                        )
+
+
+
+    return changed

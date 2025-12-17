@@ -1,5 +1,5 @@
 from Board import Board
-from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule
+from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule, apply_naked_triples_rule, apply_naked_pairs_rule
 from IE import InferenceEngine
 
 def parse_puzzle(puzzle_str):
@@ -42,6 +42,9 @@ def main():
     kb = KnowledgeBase(board)
     kb.add_rule(apply_single_candidate_rule)
     kb.add_rule(apply_hidden_single_rule)
+    kb.add_rule(apply_naked_pairs_rule)
+    kb.add_rule(apply_naked_triples_rule)
+
 
     ie = InferenceEngine(board, kb, logger)
 
