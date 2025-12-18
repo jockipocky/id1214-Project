@@ -3,8 +3,6 @@ from logs import Logger
 # IE.py
 from KB import (
     KnowledgeBase,
-    apply_single_candidate_rule,
-    apply_hidden_single_rule,
     is_solved,
     is_board_valid,
     find_empty_cell,
@@ -81,7 +79,7 @@ class InferenceEngine:
         """
         while True:
             changed = False
-            for rule in (apply_single_candidate_rule, apply_hidden_single_rule):
+            for rule in self.kb.rules:
                 if rule(board, logger=self.logger):
                     changed = True
             if not changed:

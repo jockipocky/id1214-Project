@@ -300,21 +300,6 @@ def find_empty_cell(board):
                 return (r, c)
     return None
 
-def apply_rules_until_stable(board, logger=None):
-    """
-    Apply all simple rules (single candidate, hidden single) repeatedly
-    until no more changes occur.
-    This is used both by the inference engine and by backtracking branches.
-    """
-    while True:
-        changed = False
-        # You can extend this list with more rules later:
-        for rule in (apply_single_candidate_rule, apply_hidden_single_rule):
-            if rule(board, logger=logger):
-                changed = True
-        if not changed:
-            break
-
 
 from itertools import combinations
 
@@ -396,8 +381,6 @@ def apply_naked_pairs_rule(board, logger=None):
                             removed=to_remove,
                             reason=f"because cells {cells_with_pair} form a naked pair {sorted(pair_cands)}"
                         )
-
-
 
     return changed
 

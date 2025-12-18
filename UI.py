@@ -34,39 +34,53 @@ from IE import InferenceEngine
 from logs import Logger
 
 def main():
-    puzzle_str = "980600031007000000600540000000008374000060000000000902032007400040300010000000000"
-    grid = parse_puzzle(puzzle_str)
-    board = Board(grid)
+    #puzzle_str = "000700800006000031040002000024070000010030080000060290000800070860000500002006000"
 
-    logger = Logger()
-    kb = KnowledgeBase(board)
-    kb.add_rule(apply_single_candidate_rule)
-    kb.add_rule(apply_hidden_single_rule)
-    kb.add_rule(apply_naked_pairs_rule)
-    kb.add_rule(apply_naked_triples_rule)
+    puzzles = []
+    with open("testpuzzles.txt", "r") as f:
+        current_label = None
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("#"):
+                current_label = line[1:].strip()
+            else:
+                puzzles.append((current_label, line))
 
+    for label, puzzle_str in puzzles:
 
-    ie = InferenceEngine(board, kb, logger)
+        grid = parse_puzzle(puzzle_str)
+        board = Board(grid)
 
-    print("Sudoku Puzzle to be solved:")
-    display_grid(grid)
-
-    # Previously:
-    # ie.run()
-    # if not is_solved(board):
-    #     solve_with_backtracking(board, logger=logger)
-
-    # Now:
-    solved = ie.solve()
-
-    print("\nFinal board:")
-    board.print_board()
-    print("\nSolved?", solved)
-
-    print("\n--- LOG ENTRIES ---")
-    logger.print_logs()
+        logger = Logger()
+        kb = KnowledgeBase(board)
+        kb.add_rule(apply_naked_triples_rule)
+        kb.add_rule(apply_single_candidate_rule)
+        kb.add_rule(apply_hidden_single_rule)
+        kb.add_rule(apply_naked_pairs_rule)
 
 
+        ie = InferenceEngine(board, kb, logger)
+
+        print("Sudoku Puzzle to be solved:")
+        print("Difficulty: ", label)
+        display_grid(grid)
+
+        # Previously:
+        # ie.run()
+        # if not is_solved(board):
+        #     solve_with_backtracking(board, logger=logger)
+
+        # Now:
+        solved = ie.solve()
+
+        print("\nFinal board:")
+        board.print_board()
+        print("\nSolved?", solved)
+
+        print("\n--- LOG ENTRIES ---")
+        logger.print_logs()
 
 if __name__ == "__main__":
     main()
