@@ -309,7 +309,7 @@ def apply_rules_until_stable(board, logger=None):
     while True:
         changed = False
         # You can extend this list with more rules later:
-        for rule in (apply_single_candidate_rule, apply_hidden_single_rule):
+        for rule in (apply_single_candidate_rule, apply_hidden_single_rule, apply_naked_triples_rule, apply_naked_pairs_rule):
             if rule(board, logger=logger):
                 changed = True
         if not changed:
