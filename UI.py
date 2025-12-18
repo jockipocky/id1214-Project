@@ -1,6 +1,7 @@
 from Board import Board
 from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule, apply_naked_triples_rule, apply_naked_pairs_rule
 from IE import InferenceEngine
+from logs import Logger
 
 def parse_puzzle(puzzle_str):
     """
@@ -29,9 +30,7 @@ def display_grid(grid):
         if (r + 1) % 3 == 0 and r < 8: # Every third row horizontal sperator for visual 3x3 boxes
             print("- " * 11)
 
-from KB import KnowledgeBase, apply_single_candidate_rule, apply_hidden_single_rule
-from IE import InferenceEngine
-from logs import Logger
+
 
 def main():
     #puzzle_str = "000700800006000031040002000024070000010030080000060290000800070860000500002006000"
