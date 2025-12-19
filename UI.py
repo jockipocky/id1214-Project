@@ -55,11 +55,11 @@ def main():
 
         logger = Logger()
         kb = KnowledgeBase(board)
-        kb.add_rule(apply_naked_triples_rule)
+
         kb.add_rule(apply_single_candidate_rule)
         kb.add_rule(apply_hidden_single_rule)
         kb.add_rule(apply_naked_pairs_rule)
-
+        kb.add_rule(apply_naked_triples_rule)
 
         ie = InferenceEngine(board, kb, logger)
 
